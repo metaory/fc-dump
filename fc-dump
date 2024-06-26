@@ -1,0 +1,168 @@
+#!/bin/bash
+
+#  ▀  SHELLOPTS
+# ▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔
+set -o errexit
+set -o errtrace
+set -o pipefail
+set -o noclobber
+
+#   ▀  DECLARATIONS
+# ▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔
+BEG=$(date +%s%3N)
+declare -A STAT
+declare -i T=1
+declare -i I=0
+declare -i H=0
+declare -g F=""
+declare -g FORCE=0
+declare -g HN="NA"
+declare -i COLS="${COLUMS:-$(tput cols)}"
+declare -g WRAP_SIZE="${WRAP_SIZE:-100}"
+declare -i COL_SPACE="$((((COLS - 24) / 2) * -1))"
+
+#   ▀  UTILITIES
+# ▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔
+function print_kv { printf "\e[3${4:-5}m %-12s\e[3${3:-3}m%s\e[0m\n" "$1" "$2"; }
+function get_line { wc -l "$1" | awk '{print $1}'; }
+function get_time { bc <<< "scale=2; ($(date +%s%3N) - $BEG) / 1000"; }
+
+#   ▀  HELP
+# ▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔
+function help {
+    cat <<-EOM
+		Usage:
+		fc-dump [-f|--force] [-a|--all] | [font-family]
+
+		-a, --all	dump all available uniq fonts
+		-f, --force	overwrite files if exist
+		-h, --help	print this summary
+
+
+		Example:
+
+		# write chars to file
+
+		fc-dump 'FiraCode Nerd Font'
+
+		# or
+		fc-dump FiraCode Nerd Font
+
+
+		# write all available uniq fonts
+		#  output ./raw/*.out and ./fmt/*.fmt
+
+		fc-dump --all
+
+	EOM
+}
+
+#   ▀  ERRORS
+# ▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔
+function finishup {
+    x="$?"
+    print_kv 'FINISHED IN' "$(get_time)" 6 3;
+    (( x )) && help
+    exit "$x"
+}
+
+trap finishup EXIT QUIT INT TERM
+
+#   ▀  REQUIREMENT
+# ▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔
+for dir in {raw,fmt};  do [ -d "$dir" ] || mkdir -p "$dir"; done
+for req in {fc-match,fc-list,bc};  do command -v "$req" || exit 2; done
+
+#   ▀  CLEAR LIST
+# ▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔
+rm .fc-list &>/dev/null || :
+
+#   ▀  LOC REPORT
+# ▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔
+function new_high {
+    printf '\n\t\t\e[32;1m >>> NEW HIGH <<<\e[31m'
+    printf "\n\t%'.f\t%s\e[32m" "$H" "$HN"
+    H=$1 && HN="$2"
+    printf "\n\t%'.f\t%s\e[0m\n\n\n" "$H" "$HN"
+}
+
+#   ▀  WRITE CHARS TO FILE
+# ▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔
+function dump_chr {
+    n="$*"
+    f="${n:?BAD_NAME}"
+    f="${f// /_}"
+    f="${f,,}"
+    _raw="raw/${f}.raw"
+    _fmt="fmt/${f}.fmt"
+
+    printf '\e[34m%6d\e[37m / %-6d' "$((++I))" "$T"
+    printf '\e[35m%*s \t\e[33m%*s' "$COL_SPACE" "$n" "$COL_SPACE" "$f"
+
+    [ "${STAT[$f]}" != "" ] || [ -e "$_raw" ] && [ "$FORCE" = "" ] && \
+        echo -e "\e[37m\t:SKIP:\e[0m" && return
+
+    STAT[$f]=1
+
+    for range in $(fc-match --format='%{charset}\n' "$n"); do
+        for x in $(seq "0x${range%-*}" "0x${range#*-}"); do
+            x_hex=$(printf "%04x" "$x")
+            printf "%s\U$x_hex\n" >> "$_raw"
+        done
+    done
+
+    fmt -w "$WRAP_SIZE" "$_raw" > "$_fmt"
+
+    T=$(get_line "$_raw")
+
+    printf "\t\e[37mLOC\e[36m %'8.f" "$T"
+    printf "\t\e[37mCUR\e[31m %'8.f\e[0m\n" "$H"
+
+    (( T > H )) && new_high "$T" "$n"
+}
+
+#   ▀  LIST ALL UNIQ FONTS
+# ▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔
+function list_all {
+    fc-list :scalable=True -f "%{family[0]}\n" | sort | uniq > .ff-list
+    T="$(get_line .ff-list)"
+    print_kv TOTAL "$T" 2
+}
+
+#   ▀  DUMP ALL FONTS CHARS
+# ▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔
+function dump_all {
+    list_all
+    while read -r L; do
+        n=$(awk -F ',' '{print $1}' <<< "$L")
+        dump_chr "$n"
+        (( I > 3 )) && exit
+    done < .ff-list
+}
+
+#   ▀  HEADER
+# ▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔
+print_kv WRAP_SIZE "$WRAP_SIZE"
+print_kv COL_SPACE "$COL_SPACE"
+
+#   ▀  OPTIONS
+# ▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔
+while [ "$1" ]; do
+    case $1 in
+        -a|--all) ALL=1 ;;
+        -f|--force) FORCE=1 ;;
+        -r|--help) help ;;
+        *) F+="$1" ;;
+    esac
+    shift
+    [ "$1" ] && F+=' '
+done
+
+#   ▀  MAIN
+# ▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔
+(( ALL )) && dump_all
+[ "$F" != "" ] && dump_chr "$F" && exit 0
+
+help
+
+# vim:ft=bash
