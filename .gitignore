@@ -1,3 +1,7 @@
 fmt/
 raw/
+.dev/
 .fc-list
+*.ttx
+*.otf
+*.ttf

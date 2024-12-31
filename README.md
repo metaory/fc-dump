@@ -1,92 +1,31 @@
 <div align="center">
-  <img src=".github/assets/fc-dump.png" width="168px"/>
-  <h1>fc-dᵾmp</h1>
+  <h1>
+    <img valign="middle" src=".github/assets/fc-dump.png" alt="fc-dump" height="64" />
+    fc-dᵾmp
+  </h1>
+  <h3>Font glyph extractor for TTF/OTF/TTX</h3>
 </div>
 
-```help
-*fc-dump.txt*   Dump all literal characters of all code-points of one or all uniq fonts
+---
 
-==============================================================================
+#### Requirements
+- `ttx` ([fonttools](https://archlinux.org/packages/extra/any/fonttools/))
+- `sed` ([gnu-coreutils](https://archlinux.org/packages/core/x86_64/coreutils/))
+- `awk` ([gawk](https://archlinux.org/packages/core/x86_64/gawk/))
 
-SYNOPSIS ~
-	fc-dump [-f|--force] [-a|--all] | [font-family]
-
-		-a, --all	dump all available uniq fonts
-		-f, --force	overwrite files if exist
-		-h, --help	print this summary
-<
-
-DESCRIPTION ~
-		iterate over all block and print literal character, glyph or letterform of one oall available uniq fonts
-		of one or all available uniq fonts to:
-
-		output ./raw/*.out and ./fmt/*.fmt
-
-
-
-EXAMPLES ~
-		# write chars to file
-
-		fc-dump 'FiraCode Nerd Font'
-
-		# or
-		fc-dump FiraCode Nerd Font
-
-
-		# write all available uniq fonts
-		#  output ./raw/*.out and ./fmt/*.fmt
-
-		fc-dump --all
-<
-
-ENVIRONMENT VARIABLES ~
-		FORCE	same effect as --force
-<
-
-
-SEE ALSO
-  fc-list(1), fc-match(1), FcFontMatch(3), FcPatternFormat(3), FcPatternFilter(3)
-<
-
-AUTHOR
-	metaory <metaory@gmail.com>, Jun 2024
-```
-
-
-Installation
-------------
-
-- clone repo
-- give execution permissions
-- place it in your path
-
-```ex
-# Clone the repo
+#### Install
+```sh
 git clone git@github.com:metaory/fc-dump.git
+cd fc-dump && chmod +x fc-dump
+ln -svf $PWD/fc-dump /usr/bin/
+```
 
-# Navigate to repo
-cd fc-dump
-
-# Give execution permissions
-chmod +x {fc-dump}
-
-# Link it somewhere in your PATH
-ln -svf $PWD/fc-dump /usr/bin/fc-dump
-
-# Use it anywhere
-fc-dump --all
-
-# Usage
-fc-dump --help
+#### Usage
+```sh
+fc-dump <file>  # ttf/otf/ttx
 ```
 
 ---
 
-## AUTHOR
-	metaory <metaory@gmail.com>, Jun 2024
-
----
-
-## License
-
+#### License
 [MIT](LICENSE)
